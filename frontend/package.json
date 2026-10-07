@@ -10,7 +10,8 @@
     "e2e": "node e2e/acceptance.cjs",
     "e2e:experience": "node e2e/experience.cjs",
     "e2e:observer": "node e2e/business-observer.cjs",
-    "e2e:container": "node e2e/container.cjs"
+    "e2e:container": "node e2e/container.cjs",
+    "e2e:transcript": "node e2e/transcript-ui.cjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

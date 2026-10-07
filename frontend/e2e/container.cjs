@@ -43,7 +43,7 @@ const https = require('https');
     await page.getByRole('button', { name, exact: true }).click();
     await page.locator('.detail-banner').getByText('已完成', { exact: true }).waitFor({ timeout: 60000 });
     assert.equal(await page.locator('.attempt').count(), 2);
-    await page.locator('.attempt').filter({ hasText: '直接注入：诱导外发工具' }).locator('summary').click();
+    await page.locator('.attempt').filter({ hasText: '直接注入：诱导外发工具' }).locator(':scope > summary').click();
     assert((await page.locator('.attempt').filter({ hasText: '直接注入：诱导外发工具' }).textContent()).includes('tool.completed'));
     await page.getByRole('region', { name: '修复与复测建议' }).waitFor();
     assert((await page.getByRole('region', { name: '修复与复测建议' }).textContent()).includes('服务端授权'));

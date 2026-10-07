@@ -7,6 +7,7 @@ import secrets
 import time
 
 from .network import bounded_request
+from .transcript import recorded_request
 
 PROTOCOL = "agentsec-business-observer-v1"
 
@@ -159,7 +160,9 @@ async def run_observed(settings, case, config, secret, budget, attempt_id):
         evidence["turns"] = 1
         evidence["usage_complete"] = False
         spec = case["spec"]
-        response = await bounded_request(
+        response = await recorded_request(
+            evidence,
+            bounded_request,
             settings,
             config["endpoint"],
             secret,

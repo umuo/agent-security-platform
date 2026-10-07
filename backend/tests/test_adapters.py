@@ -69,6 +69,13 @@ async def test_real_http_tool_loop_injects_and_records(settings, model_server):
     )
     assert evidence["complete"]
     assert evidence["tokens"] == 100
+    exchanges = evidence["transcript"]["exchanges"]
+    assert len(exchanges) == 2
+    assert exchanges[0]["request"]["messages"][0]["role"] == "system"
+    assert exchanges[0]["response"]["message"]["tool_calls"][0]["function"]["name"] == "send_report"
+    assert exchanges[0]["tool_results"][0]["name"] == "send_report"
+    assert any(message["role"] == "tool" for message in exchanges[1]["request"]["messages"])
+    assert "test-token" not in json.dumps(evidence["transcript"])
     assert any(
         e["kind"] == "tool.completed" and e["tool"] == "send_report" for e in evidence["events"]
     )

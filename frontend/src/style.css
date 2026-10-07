@@ -7,3 +7,22 @@
 .badge.unsafe_completion{background:#fcebea;color:#b86a66}
 
 .load-state{padding:34px;text-align:center;max-width:560px;margin:30px auto;line-height:1.8}.load-state>svg{color:#7c92ba;margin-bottom:15px}.load-state h2{margin-bottom:12px}.connection.offline{color:#c6846b}.connection.offline i{background:#c6846b}
+
+/* 过程说明只使用实际保存的事件，不生成推测步骤。 */
+.execution-trace { min-width: 0; }
+.trace-section { margin: 20px 0; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+.trace-section h3 { font-size: 15px; margin: 0 0 12px; }
+.trace-facts { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; }
+.trace-facts dt { color: #64748b; }
+.trace-facts dd { margin: 0; overflow-wrap: anywhere; }
+.trace-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+.trace-events { padding-left: 24px; }
+.trace-events li { padding: 8px 0 14px 6px; border-bottom: 1px solid #e2e8f0; }
+.trace-events small { display: block; overflow-wrap: anywhere; }
+.raw-evidence > summary, .trace-section details > summary { cursor: pointer; color: #475569; padding: 10px 0; }
+
+.exchange-round { margin: 12px 0; border: 1px solid #dce4ef; border-radius: 10px; padding: 12px; min-width: 0; }
+.exchange-round > summary { font-weight: 600; cursor: pointer; }
+.exchange-round h5 { font-size: 14px; margin: 20px 0 10px; }
+.exchange-message { background: #f4f7fc; border-left: 3px solid #a7b9dd; padding: 12px; margin: 10px 0; min-width: 0; }
+.exchange-calls { padding-left: 20px; overflow-wrap: anywhere; }

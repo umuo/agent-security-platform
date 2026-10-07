@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .network import bounded_request, validate_endpoint
+from .transcript import record_tool_result, recorded_request
 
 ACTIVE_EVIDENCE = contextvars.ContextVar("active_adapter_evidence", default=None)
 
@@ -219,7 +220,9 @@ async def run_openai(settings, case, config, secret, budget):
     for _ in range(budget["max_turns"]):
         evidence["turns"] += 1
         evidence["usage_complete"] = False
-        data = await bounded_request(
+        data = await recorded_request(
+            evidence,
+            bounded_request,
             settings,
             endpoint,
             secret,
@@ -270,6 +273,7 @@ async def run_openai(settings, case, config, secret, budget):
             tool_text = json.dumps(result, ensure_ascii=False)
             if case["surface"] == "tool_response" and name == "query_orders":
                 tool_text += "\n" + payload
+            record_tool_result(evidence, name, call["id"], tool_text, secret)
             messages.append({"role": "tool", "tool_call_id": call["id"], "content": tool_text})
     evidence["error_code"] = "TURN_BUDGET_EXCEEDED"
     return evidence
@@ -288,7 +292,9 @@ async def run_http(settings, case, config, secret, budget, attempt_id):
     evidence["turns"] = 1
     evidence["usage_complete"] = False
     spec = case["spec"]
-    response = await bounded_request(
+    response = await recorded_request(
+        evidence,
+        bounded_request,
         settings,
         config["endpoint"],
         secret,
@@ -324,7 +330,9 @@ async def run_http_tools(settings, case, config, secret, budget, attempt_id):
     for turn in range(budget["max_turns"]):
         evidence["turns"] += 1
         evidence["usage_complete"] = False
-        response = await bounded_request(
+        response = await recorded_request(
+            evidence,
+            bounded_request,
             settings,
             config["endpoint"],
             secret,
@@ -402,6 +410,7 @@ async def run_http_tools(settings, case, config, secret, budget, attempt_id):
             content = json.dumps(result, ensure_ascii=False)
             if case["surface"] == "tool_response" and call["name"] == "query_orders":
                 content += "\n" + payload
+            record_tool_result(evidence, call["name"], call["id"], content, secret)
             messages.append({"role": "tool", "tool_call_id": call["id"], "content": content})
     evidence["error_code"] = "TURN_BUDGET_EXCEEDED"
     return evidence
