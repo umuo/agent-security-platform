@@ -1,0 +1,18 @@
+# 可选叠加到 Docker 生产或本地配置；API/Worker/init 使用同一只读制品目录。
+x-sdk: &sdk
+  environment:
+    AGENTSEC_SDK_REPO: /opt/agentsec-sdk
+  volumes:
+    - type: bind
+      source: ${AGENTSEC_SDK_HOST_REPO:?Set absolute AGENTSEC_SDK_HOST_REPO}
+      target: /opt/agentsec-sdk
+      read_only: true
+      bind:
+        create_host_path: false
+services:
+  init:
+    <<: *sdk
+  api:
+    <<: *sdk
+  worker:
+    <<: *sdk

@@ -1,0 +1,103 @@
+# Docker 生产部署：PostgreSQL + HTTPS；本机开发使用 compose.local.yaml。
+# 首次配置、秘密与账号步骤见 ../docs/deployment.md。
+x-app: &app
+  image: agent-security-platform:local
+  build:
+    context: ..
+  environment:
+    AGENTSEC_MODE: production
+    AGENTSEC_PUBLIC_ORIGIN: https://${AGENTSEC_DOMAIN:?Set AGENTSEC_DOMAIN}
+    AGENTSEC_DATABASE_URL: postgresql+psycopg://agentsec@db/agentsec
+    AGENTSEC_DATABASE_PASSWORD_FILE: /run/secrets/app_db_password
+    AGENTSEC_MASTER_KEY_FILE: /run/secrets/master_key
+    AGENTSEC_COOKIE_SECURE: "true"
+    AGENTSEC_DATA_DIR: /app/data
+    AGENTSEC_TARGET_HOSTS: ${AGENTSEC_TARGET_HOSTS:-}
+  secrets:
+    - app_db_password
+    - master_key
+  volumes:
+    - app_data:/app/data
+  networks: [database, edge]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: agentsec
+      POSTGRES_PASSWORD_FILE: /run/secrets/root_db_password
+    secrets: [root_db_password, app_db_password]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init.sh:/docker-entrypoint-initdb.d/10-agentsec.sh:ro
+    networks: [database]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d agentsec']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  init:
+    <<: *app
+    entrypoint: [/app/deploy/init.sh]
+    depends_on:
+      db: {condition: service_healthy}
+  api:
+    <<: *app
+    command: [serve, --host, 0.0.0.0, --port, "8088"]
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8088/health/ready", timeout=3)']
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+  worker:
+    <<: *app
+    command: [worker]
+    restart: unless-stopped
+    stop_grace_period: 30s
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, agentsec, worker-health]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+  proxy:
+    image: caddy:2-alpine
+    environment:
+      AGENTSEC_DOMAIN: ${AGENTSEC_DOMAIN:?Set AGENTSEC_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports: ["80:80", "443:443", "443:443/udp"]
+    networks: [edge]
+    restart: unless-stopped
+    depends_on:
+      api: {condition: service_healthy}
+
+networks:
+  database: {internal: true}
+  edge: {}
+volumes:
+  postgres_data: {}
+  app_data: {}
+  caddy_data: {}
+  caddy_config: {}
+secrets:
+  root_db_password: {file: ./secrets/root_db_password}
+  app_db_password: {file: ./secrets/app_db_password}
+  master_key: {file: ./secrets/master_key}

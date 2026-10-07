@@ -1,0 +1,52 @@
+# 本地容器开发／验收：SQLite + HTTP，仅发布回环端口。
+# 使用独立项目名 agentsec-dev，避免与生产数据卷混用。
+x-local-app: &local-app
+  image: agent-security-platform:dev
+  build:
+    context: ..
+  environment:
+    AGENTSEC_MODE: local
+    AGENTSEC_DATABASE_URL: sqlite:////app/data/platform.db
+    AGENTSEC_DATA_DIR: /app/data
+    AGENTSEC_COOKIE_SECURE: "false"
+    AGENTSEC_TARGET_HOSTS: ${AGENTSEC_TARGET_HOSTS:-}
+  volumes:
+    - dev_data:/app/data
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  init:
+    <<: *local-app
+    entrypoint: [/app/deploy/init.sh]
+  api:
+    <<: *local-app
+    command: [serve, --host, 0.0.0.0, --port, "8088"]
+    ports: ["127.0.0.1:8088:8088"]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8088/health/ready", timeout=3)']
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+  worker:
+    <<: *local-app
+    command: [worker]
+    stop_grace_period: 30s
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, agentsec, worker-health]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+volumes:
+  dev_data: {}
